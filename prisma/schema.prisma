@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?  // solo usuarios locales
+  googleId  String?  @unique // solo usuarios federados
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+}
