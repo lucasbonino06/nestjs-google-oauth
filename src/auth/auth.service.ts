@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 
@@ -17,23 +22,34 @@ export class AuthService {
   ) {}
 
   async validateGoogleUser(googleUser: GoogleUser) {
-    const byGoogleId = await this.usersService.findByGoogleId(
-      googleUser.googleId,
-    );
-    if (byGoogleId) return byGoogleId;
-
-    const byEmail = await this.usersService.findByEmail(googleUser.email);
-    if (byEmail) {
-      return this.usersService.linkGoogleAccount(
-        byEmail.id,
-        googleUser.googleId,
-      );
+    if (!googleUser.email) {
+      throw new UnauthorizedException('Google no devolvió un email');
     }
 
-    return this.usersService.create(googleUser);
+    try {
+      const byGoogleId = await this.usersService.findByGoogleId(
+        googleUser.googleId,
+      );
+      if (byGoogleId) return byGoogleId;
+
+      const byEmail = await this.usersService.findByEmail(googleUser.email);
+      if (byEmail) {
+        return await this.usersService.linkGoogleAccount(
+          byEmail.id,
+          googleUser.googleId,
+        );
+      }
+
+      return await this.usersService.create(googleUser);
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException(
+        'Error al procesar el usuario de Google',
+      );
+    }
   }
 
   login(user: { id: string; email: string }) {
     return this.jwtService.sign({ sub: user.id, email: user.email });
   }
-} 
+}
